@@ -1,0 +1,20 @@
+{
+  "name": "autoglobeweb",
+  "version": "1.0.0",
+  "main": "backend-engr/server.js",
+  "private": true,
+  "scripts": {
+    "start": "node backend-engr/server.js",
+    "server": "npm start --prefix backend-engr",
+    "client": "npm start --prefix frontend-globe",
+    "dev": "concurrently \"npm run server\" \"npm run client\"",
+    "build": "npm run build --prefix frontend-globe",
+    "install-client": "npm install --prefix frontend-globe",
+    "install-server": "npm install --prefix backend-engr",
+    "render-postbuild": "cd frontend-globe && npm install && npm run build"
+
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}
