@@ -93,7 +93,7 @@ connectDB();
 // ---------------- API ROUTES ----------------
 
 // HEALTH CHECK
-app.get("/", (req, res) => {
+app.get("/api", (req, res) => {
   res.json({
     status: "ok",
     message: "SlavePort Backend Running 🚀",
