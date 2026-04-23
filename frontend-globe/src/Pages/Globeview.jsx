@@ -72,6 +72,23 @@ const cleanYear = (str) =>
 });
 
 useEffect(() => {
+  const clearHover = () => {
+    setHoveredItem(null);
+    setHoverControl(false);
+  };
+
+  window.addEventListener("click", clearHover);
+  return () => window.removeEventListener("click", clearHover);
+}, []);
+
+useEffect(() => {
+  return () => {
+    setHoveredItem(null);
+    setHoverControl(false);
+  };
+}, []);
+
+useEffect(() => {
   const handleResize = () => {
     setSize({
       width: window.innerWidth,
@@ -118,6 +135,9 @@ const globeData = locations;
 const allData = [...globeData, controlPoint];
 
     const handleControlClick = (point) => {
+       setHoveredItem(null);     // ✅ important
+  setHoverControl(false);   // ✅ prevent stuck tooltip
+
   if (focusMode) {
     setFocusMode(false);
     setFocusPoint(null);
@@ -191,6 +211,10 @@ const allData = [...globeData, controlPoint];
 
   // ---------------- HANDLERS ----------------
   const handleSelectItem = (item) => {
+      setHoveredItem(null); // ✅ extra safety
+        setHoverControl(false);     // ✅ clears control tooltip (if active)
+
+
     globeRef.current.pointOfView(
       { lat: item.lat || 0, lng: item.lng || 0, altitude: 1.6 },
       1200
@@ -202,6 +226,7 @@ const allData = [...globeData, controlPoint];
 
   const closePopup = () => setSelectedItem(null);
 
+  
   // ---------------- AUTO ROTATION CONTROL ----------------
  useEffect(() => {
   const handleMouseMove = (e) => {
@@ -340,12 +365,12 @@ return min === max
           ← Back to Home
         </button>
 
-{hoverControl && (
+{hoverControl && !selectedItem && (
   <div className="hover-tooltip1">
     Click compass to converge or diverge slaveport locations
   </div>
 )}
-        {hoveredItem && (
+       {hoveredItem && !selectedItem && (
           <div className="hover-tooltip">
             <p>
               <b>{hoveredItem.country}</b> • {hoveredItem.area}
@@ -420,6 +445,8 @@ img.style.opacity = focusMode && !isFocused(d)
   : 1;
             img.onclick = (e) => {
               e.stopPropagation();
+
+
               handleSelectItem(d);
             };
             img.onmouseenter = () => setHoveredItem(d);
