@@ -1,25 +1,8 @@
-import * as L from "leaflet";
-import { DivIcon } from "leaflet";
-import "leaflet/dist/leaflet.css";
-
-import markerIcon2x from "leaflet/dist/images/marker-icon-2x.png";
-import markerIcon from "leaflet/dist/images/marker-icon.png";
-import markerShadow from "leaflet/dist/images/marker-shadow.png";
-
-
-import { MapContainer, TileLayer, Marker, Popup, useMap} from "react-leaflet";
-import React, { useState, useEffect, useRef  } from "react";
+import React, { useRef, useState, useEffect } from "react";
+import Globe from "react-globe.gl";
 import { useNavigate } from "react-router-dom";
 import "./CSS/Globeview.css";
 import { AiOutlineSearch } from "react-icons/ai";
-
-delete L.Icon.Default.prototype._getIconUrl;
-
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: markerIcon2x,
-  iconUrl: markerIcon,
-  shadowUrl: markerShadow,
-});
 
 // ✅ BACKEND API
 const API = `${process.env.REACT_APP_API}/api/locations`;
@@ -44,18 +27,6 @@ const romanToNumber = (roman) => {
 
   return num;
 };
-
-const createImageIcon = (url) =>
-  new DivIcon({
-    className: "custom-marker",
-    html: `
-      <div class="marker-wrapper">
-        <img src="${url}" />
-      </div>
-    `,
-    iconSize: [40, 40],
-    iconAnchor: [20, 20],
-  });
 
 // Number → Roman
 const numberToRoman = (num) => {
@@ -95,19 +66,86 @@ const cleanYear = (str) =>
     .replace(/e/g, "")
     .trim();
     
+  const [size, setSize] = useState({
+  width: window.innerWidth,
+  height: window.innerHeight
+});
 
+useEffect(() => {
+  const clearHover = () => {
+    setHoveredItem(null);
+    setHoverControl(false);
+  };
+
+  window.addEventListener("click", clearHover);
+  return () => window.removeEventListener("click", clearHover);
+}, []);
+
+useEffect(() => {
+  return () => {
+    setHoveredItem(null);
+    setHoverControl(false);
+  };
+}, []);
+
+useEffect(() => {
+  const handleResize = () => {
+    setSize({
+      width: window.innerWidth,
+      height: window.innerHeight
+    });
+  };
+
+  window.addEventListener("resize", handleResize);
+  handleResize(); // important initial run
+
+  return () => window.removeEventListener("resize", handleResize);
+}, []);
+
+const isMobile = window.innerWidth <= 480;
+const sidebarWidth = isMobile ? 0 : 260;
+
+  const globeRef = useRef();
+  const isInteractingRef = useRef(false);
+  const navigate = useNavigate();
 
   const [locations, setLocations] = useState([]);
-  const navigate = useNavigate();
   const [selectedCountry, setSelectedCountry] = useState(null);
   const [selectedItem, setSelectedItem] = useState(null);
+  const [hoveredItem, setHoveredItem] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
-const [mapTarget, setMapTarget] = useState(null);  
+  const [hoverControl, setHoverControl] = useState(false);
 
+  const [focusMode, setFocusMode] = useState(false);
+const [focusPoint, setFocusPoint] = useState(null);
 
+const controlPoint = {
+  lat: 45,
+  lng: -20,
+  isControl: true
+};
 
+const isFocused = (d) =>
+  focusMode &&
+  focusPoint &&
+  d._id === focusPoint._id;
 
-  
+const globeData = locations;
+
+const allData = [...globeData, controlPoint];
+
+    const handleControlClick = (point) => {
+       setHoveredItem(null);     // ✅ important
+  setHoverControl(false);   // ✅ prevent stuck tooltip
+
+  if (focusMode) {
+    setFocusMode(false);
+    setFocusPoint(null);
+  } else {
+    setFocusMode(true);
+    setFocusPoint(point);
+  }
+};
 
   // ---------------- FETCH FROM BACKEND ----------------
   const fetchLocations = async () => {
@@ -120,16 +158,24 @@ const [mapTarget, setMapTarget] = useState(null);
     }
   };
 
- useEffect(() => {
-  if (mapTarget) return; // ❌ stop background refresh interfering
+  useEffect(() => {
+    fetchLocations();
+    const interval = setInterval(fetchLocations, 5000); // auto refresh
+    return () => clearInterval(interval);
 
-  fetchLocations();
-  const interval = setInterval(fetchLocations, 5000);
+  }, []);
 
-  return () => clearInterval(interval);
-}, [mapTarget]);
+  useEffect(() => {
+  if (!globeRef.current) return;
 
- 
+  globeRef.current.pointOfView(
+    focusMode && focusPoint
+      ? { lat: focusPoint.lat, lng: focusPoint.lng, altitude: 2 }
+      : { lat: 0, lng: 0, altitude: 2.5 },
+    1200
+  );
+}, [focusMode, focusPoint]);
+
   // ---------------- GROUP BY COUNTRY ----------------
   const groupedCountries = Object.values(
     locations.reduce((acc, item) => {
@@ -164,46 +210,48 @@ const [mapTarget, setMapTarget] = useState(null);
   );
 
   // ---------------- HANDLERS ----------------
-  
   const handleSelectItem = (item) => {
-  setSelectedItem(item);
-  setSelectedCountry(item.country);
-  setMapTarget(item);
-};
+      setHoveredItem(null); // ✅ extra safety
+        setHoverControl(false);     // ✅ clears control tooltip (if active)
 
+
+    globeRef.current.pointOfView(
+      { lat: item.lat || 0, lng: item.lng || 0, altitude: 1.6 },
+      1200
+    );
+
+    setSelectedItem(item);
+    setSelectedCountry(item.country);
+  };
 
   const closePopup = () => setSelectedItem(null);
 
   
+  // ---------------- AUTO ROTATION CONTROL ----------------
+ useEffect(() => {
+  const handleMouseMove = (e) => {
+    if (
+      selectedItem ||
+      focusMode ||
+      isInteractingRef.current
+    ) return;
 
-function MapController({ target }) {
-  const map = useMap();
-  const hasFiredRef = useRef(false);
-  const lastId = useRef(null);
+    const x = e.clientX / window.innerWidth - 0.5;
+    const y = e.clientY / window.innerHeight - 0.5;
 
-  useEffect(() => {
-    if (!target?._id) return;
+    globeRef.current?.pointOfView(
+      {
+        lat: -y * 40,
+        lng: x * 80,
+        altitude: 2.5
+      },
+      300
+    );
+  };
 
-    // 🚫 ignore duplicates
-    if (lastId.current === target._id && hasFiredRef.current) return;
-
-    lastId.current = target._id;
-    hasFiredRef.current = true;
-
-    map.flyTo([target.lat, target.lng], 6, {
-      duration: 1.5,
-    });
-
-    // reset after movement completes
-    const t = setTimeout(() => {
-      hasFiredRef.current = false;
-    }, 1600);
-
-    return () => clearTimeout(t);
-  }, [target, map]);
-
-  return null;
-}
+  window.addEventListener("mousemove", handleMouseMove);
+  return () => window.removeEventListener("mousemove", handleMouseMove);
+}, [selectedItem, focusMode]);
 
   return (
     <div className="layout">
@@ -312,47 +360,111 @@ return min === max
 
       {/* ---------------- GLOBE ---------------- */}
       <div className="globe-area">
+
         <button className="back-home-btn" onClick={() => navigate("/")}>
           ← Back to Home
         </button>
 
-
-  <MapContainer
-    center={[20, 0]}
-    zoom={2}
-    zoomControl={true}
-scrollWheelZoom={true}
-doubleClickZoom={false}
-  style={{ width: "100%", height: "100vh" }}
->
-
-<MapController target={mapTarget} />
-
-    <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-
-
-    {locations.map((loc) => (
-     <Marker
-  key={loc._id}
-  position={[loc.lat, loc.lng]}
-  icon={createImageIcon(loc.picture)}
-  eventHandlers={{
-    click: () => handleSelectItem(loc),
-  }}
->
-        <Popup>
-          <div style={{ textAlign: "center" }}>
-            <h4>{loc.item}</h4>
-            <p>{loc.city}, {loc.country}</p>
-            <p>{loc.year}</p>
+{hoverControl && !selectedItem && (
+  <div className="hover-tooltip1">
+    Click compass to converge or diverge slaveport locations
+  </div>
+)}
+       {hoveredItem && !selectedItem && (
+          <div className="hover-tooltip">
+            <p>
+              <b>{hoveredItem.country}</b> • {hoveredItem.area}
+            </p>
           </div>
-        </Popup>
-      </Marker>
-    ))}
+        )}
 
-  </MapContainer>
+        <Globe
+          ref={globeRef}
+          width={size.width - sidebarWidth}
+          height={size.height}
+          rendererConfig={{
+  antialias: true,
+  alpha: true,
+  powerPreference: "high-performance"
+}}
+          backgroundColor="rgba(0,0,0,0)"
+// ✅ MAIN TEXTURE (vintage map)
+  globeImageUrl="//unpkg.com/three-globe/example/img/earth-day.jpg"
 
-</div>
+  // ✅ OPTIONAL (adds subtle depth)
+  bumpImageUrl="/textures/bump.png"
+
+  // ✅ OPTIONAL (controls shine)
+  specularImageUrl="/textures/specular.png"
+ onGlobeReady={() => {
+  const renderer = globeRef.current.renderer?.();
+  renderer?.setPixelRatio(window.devicePixelRatio);
+
+  setTimeout(() => {
+    globeRef.current.pointOfView({ lat: 0, lng: 0, altitude: 2.5 }, 0);
+  }, 50);
+}}
+htmlElementsData={allData.filter(
+  l => Number.isFinite(l.lat) && Number.isFinite(l.lng)
+)}
+          htmlElement={(d) => {
+            const el = document.createElement("div");
+            el.className = "marker";
+            el.style.pointerEvents = "auto"; 
+             if (d.isControl) {
+    const icon = document.createElement("img");
+   icon.src = "/textures/lm.jpg"; // classic map pin
+  icon.style.width = "40px";
+  icon.style.height = "40px";
+  icon.style.cursor = "pointer";
+  icon.style.position = "relative";
+  icon.style.zIndex = "999";
+  icon.style.pointerEvents = "auto"; 
+
+icon.onmouseenter = () => setHoverControl(true);
+icon.onmouseleave = () => setHoverControl(false);
+    icon.onclick = (e) => {
+      e.stopPropagation();
+      handleControlClick({ lat: d.lat, lng: d.lng });
+    };
+
+    el.appendChild(icon);
+    return el;
+  }
+
+
+            const img = document.createElement("img");
+            img.src = d.picture;
+            img.style.pointerEvents = "auto"; 
+            img.style.transform = isFocused(d)
+  ? "scale(1.6)"
+  : "scale(1)";
+
+img.style.opacity = focusMode && !isFocused(d)
+  ? 0
+  : 1;
+            img.onclick = (e) => {
+              e.stopPropagation();
+
+
+              handleSelectItem(d);
+            };
+            img.onmouseenter = () => setHoveredItem(d);
+            img.onmouseleave = () => setHoveredItem(null);
+
+            el.appendChild(img);
+            return el;
+          }}
+
+          onGlobeDragStart={() => {
+    isInteractingRef.current = true;
+  }}
+  onGlobeDragEnd={() => {
+    isInteractingRef.current = false;
+  }}
+        />
+      </div>
+
       {/* ---------------- POPUP ---------------- */}
       {selectedItem && (
         <div className="popup">
@@ -382,4 +494,4 @@ doubleClickZoom={false}
   );
 }
 
-export default Globeview;
+export default Globeview; 

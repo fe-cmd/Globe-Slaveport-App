@@ -10,7 +10,7 @@
 
 .back-home-btn {
   top: 20px;
-  left: 20px;
+  left: 50px;
   z-index: 1000;
   position: absolute;
   padding: 10px 16px;
@@ -396,6 +396,26 @@
   animation: fadeIn1 0.15s ease-in;
 }
 
+.custom-marker {
+  background: transparent;
+  border: none;
+}
+
+.marker-wrapper {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 1px solid white;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+  cursor: pointer;
+}
+
+.marker-wrapper img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
 
 @keyframes fadeIn {
   from {
@@ -461,9 +481,10 @@
   }
 
   .back-home-btn{
-    width: 150px;
+    width: 100px;
     font-size: 10px;
     margin-top: -20px;
+    left:300px
   }
 
   .sidebar {
@@ -475,3 +496,15 @@
     height: 60vh;
   }
 }
+
+@media (max-width: 400px){
+   .back-home-btn{
+    left: 250px;
+   }
+}
+@media (max-width: 360px) {
+   .back-home-btn {
+    left: 220px;
+   }
+}
+

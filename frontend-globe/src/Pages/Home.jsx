@@ -18,14 +18,14 @@ function Home() {
 
         {/* LOGO */}
         <div className="logo">
-          <span className="logo-box">SlavePort Archive</span>
+          <span className="logo-box">MEMORIES</span>
         </div>
 
         {/* CENTER CONTENT */}
         <div className="hero-content">
           <h1>
-            Slaveport revealing untold story <br />
-            <span>of Global Slave Trade</span>
+            Memories revealing untold story <br />
+            <span>of Global Slave Trade Ports</span>
           </h1>
 
           <p>
