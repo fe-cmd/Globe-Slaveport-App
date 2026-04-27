@@ -103,10 +103,11 @@ const cleanYear = (str) =>
   const [selectedItem, setSelectedItem] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
 const [mapTarget, setMapTarget] = useState(null);  
+const [isMobile, setIsMobile] = useState(false);
 
 
 
-
+const sidebarRef = useRef(null);
   
 
   // ---------------- FETCH FROM BACKEND ----------------
@@ -119,6 +120,13 @@ const [mapTarget, setMapTarget] = useState(null);
       console.error("Error fetching locations:", err);
     }
   };
+
+  useEffect(() => {
+const check = () => setIsMobile(window.matchMedia("(max-width: 480px)").matches);  check();
+
+  window.addEventListener("resize", check);
+  return () => window.removeEventListener("resize", check);
+}, []);
 
  useEffect(() => {
   if (mapTarget) return; // ❌ stop background refresh interfering
@@ -171,6 +179,13 @@ const [mapTarget, setMapTarget] = useState(null);
   setMapTarget(item);
 };
 
+const scrollToSidebar = () => {
+  sidebarRef.current?.scrollIntoView({
+    behavior: "smooth",
+    block: "start",
+  });
+};
+
 
   const closePopup = () => setSelectedItem(null);
 
@@ -209,7 +224,7 @@ function MapController({ target }) {
     <div className="layout">
 
       {/* ---------------- SIDEBAR ---------------- */}
-      <div className="sidebar">
+      <div className="sidebar"  ref={sidebarRef}>
        <div className="sidebar-top">
         <div className="sidebar-header">
           <h2>{selectedCountry || "Countries"}</h2>
@@ -316,6 +331,15 @@ return min === max
           ← Back to Home
         </button>
 
+        {isMobile && (
+  <button
+    className="mobile-hint-btn"
+    onClick={scrollToSidebar}
+  >
+  Tap here to scroll up
+  </button>
+)}
+
 
   <MapContainer
     center={[20, 0]}
@@ -323,6 +347,7 @@ return min === max
     zoomControl={true}
 scrollWheelZoom={true}
 doubleClickZoom={false}
+dragging={!isMobile}  
   style={{ width: "100%", height: "100vh" }}
 >
 

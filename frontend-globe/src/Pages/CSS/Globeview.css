@@ -401,6 +401,26 @@
   border: none;
 }
 
+.mobile-hint-btn {
+  position: fixed;
+  bottom: 290px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9999;
+  cursor: pointer;
+  background: rgba(0,0,0,0.7);
+  color: white;
+  border: none;
+
+  padding: 12px 16px;
+  border-radius: 30px;
+
+  font-size: 13px;
+  font-weight: 500;
+
+  box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+}
+
 .marker-wrapper {
   width: 40px;
   height: 40px;
@@ -457,6 +477,11 @@
 }
 
 @media (max-width: 480px) {
+
+   .leaflet-container {
+    touch-action: pan-y; /* allows page vertical scroll */
+  }
+
   .search-container{
     width: 100%;
     max-width: 470px;
@@ -501,10 +526,18 @@
    .back-home-btn{
     left: 250px;
    }
+
+   .mobile-hint-btn {
+    left: 45%;
+   }
 }
 @media (max-width: 360px) {
    .back-home-btn {
     left: 220px;
+   }
+
+   .mobile-hint-btn {
+    left: 40%;
    }
 }
 
