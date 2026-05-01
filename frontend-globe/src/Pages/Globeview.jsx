@@ -104,10 +104,28 @@ const cleanYear = (str) =>
   const [searchTerm, setSearchTerm] = useState("");
 const [mapTarget, setMapTarget] = useState(null);  
 const [isMobile, setIsMobile] = useState(false);
+const [visibleMarkers, setVisibleMarkers] = useState([]);
+const [searchCountryMarkers, setSearchCountryMarkers] = useState(null);
 
 
 
 const sidebarRef = useRef(null);
+
+ const groupedCountries = Object.values(
+    locations.reduce((acc, item) => {
+      if (!acc[item.country]) {
+        acc[item.country] = {
+          name: item.country,
+          region: item.area,
+          items: [],
+        };
+      }
+
+      acc[item.country].items.push(item);
+      return acc;
+    }, {})
+  );
+
   
 
   // ---------------- FETCH FROM BACKEND ----------------
@@ -128,6 +146,7 @@ const check = () => setIsMobile(window.matchMedia("(max-width: 480px)").matches)
   return () => window.removeEventListener("resize", check);
 }, []);
 
+
  useEffect(() => {
   if (mapTarget) return; // ❌ stop background refresh interfering
 
@@ -139,21 +158,7 @@ const check = () => setIsMobile(window.matchMedia("(max-width: 480px)").matches)
 
  
   // ---------------- GROUP BY COUNTRY ----------------
-  const groupedCountries = Object.values(
-    locations.reduce((acc, item) => {
-      if (!acc[item.country]) {
-        acc[item.country] = {
-          name: item.country,
-          region: item.area,
-          items: [],
-        };
-      }
-
-      acc[item.country].items.push(item);
-      return acc;
-    }, {})
-  );
-
+ 
   // ---------------- FILTER ----------------
   const filteredCountries = groupedCountries.filter((c) =>
     c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -177,6 +182,11 @@ const check = () => setIsMobile(window.matchMedia("(max-width: 480px)").matches)
   setSelectedItem(item);
   setSelectedCountry(item.country);
   setMapTarget(item);
+
+    setVisibleMarkers((prev) => {
+    if (prev.some((m) => m._id === item._id)) return prev;
+    return [...prev, item];
+  });
 };
 
 const scrollToSidebar = () => {
@@ -220,6 +230,8 @@ function MapController({ target }) {
   return null;
 }
 
+const markersToDisplay = searchCountryMarkers || visibleMarkers;
+
   return (
     <div className="layout">
 
@@ -232,8 +244,12 @@ function MapController({ target }) {
           {selectedCountry && (
             <button
               className="close-btn"
-              onClick={() => setSelectedCountry(null)}
-            >
+onClick={() => {
+  setSelectedCountry(null);
+
+  // remove only the filter
+  setSearchCountryMarkers(null);
+}}            >
               ← Back
             </button>
           )}
@@ -267,7 +283,20 @@ function MapController({ target }) {
             <div
               key={c.name}
               className="sidebar-item"
-              onClick={() => setSelectedCountry(c.name)}
+              onClick={() => {
+  setSelectedCountry(c.name);
+
+  // show only this country's markers on map
+  setSearchCountryMarkers(c.items);
+
+  // clear any previous popup
+  setSelectedItem(null);
+
+  // move map to first item
+  if (c.items.length > 0) {
+    setMapTarget(c.items[0]);
+  }
+}}
             >
               <div className="country-name">{c.name}</div>
               <div className="country-meta">{c.items.length} items</div>
@@ -356,14 +385,24 @@ dragging={!isMobile}
     <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
 
 
-    {locations.map((loc) => (
+    {markersToDisplay.map((loc) => (
      <Marker
   key={loc._id}
   position={[loc.lat, loc.lng]}
   icon={createImageIcon(loc.picture)}
   eventHandlers={{
-    click: () => handleSelectItem(loc),
-  }}
+  click: () => {
+    setSelectedItem(loc);
+    setMapTarget(loc);
+     // Only persist marker if NOT in search mode
+   
+      setVisibleMarkers((prev) => {
+        if (prev.some((m) => m._id === loc._id)) return prev;
+        return [...prev, loc];
+      });
+   
+  },
+}}
 >
         <Popup>
           <div style={{ textAlign: "center" }}>
