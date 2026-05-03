@@ -45,32 +45,30 @@ const storage = new CloudinaryStorage({
 const upload = multer({ storage });
 
 // ---------------- 🌍 GEO FUNCTION ----------------
-// ---------------- 🌍 GEO FUNCTION ----------------
 const getCoordinates = async (city, country) => {
   try {
-    const key = process.env.OPENCAGE_KEY;
+    const query = `${city}, ${country}`;
 
-    const url = `https://api.opencagedata.com/geocode/v1/json?q=${encodeURIComponent(
-      city + "," + country
-    )}&key=${key}`;
+    const url = `https://us1.locationiq.com/v1/search.php?key=${process.env.LOCATIONIQ_KEY}&q=${encodeURIComponent(
+      query
+    )}&format=json`;
 
     const res = await fetch(url);
     const data = await res.json();
 
-    console.log("🌍 OpenCage response:", data);
-
-    if (data.results.length > 0) {
+    if (Array.isArray(data) && data.length > 0) {
       return {
-        lat: data.results[0].geometry.lat,
-        lng: data.results[0].geometry.lng,
+        lat: parseFloat(data[0].lat),
+        lng: parseFloat(data[0].lon),
       };
     }
   } catch (err) {
-    console.error("Geo error:", err);
+    console.error("LocationIQ error:", err);
   }
 
   return { lat: 0, lng: 0 };
 };
+const sleep = (ms) => new Promise((res) => setTimeout(res, ms));
 
 // ---------------- DB CONNECTION ----------------
 const connectDB = async () => {
@@ -126,7 +124,6 @@ app.post("/api/locations", upload.single("image"), async (req, res) => {
 
     await newLocation.save();
     res.json(newLocation);
-
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -161,11 +158,11 @@ app.put("/api/locations/:id", upload.single("image"), async (req, res) => {
     );
 
     res.json(updated);
-
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
+
 // DELETE LOCATION
 app.delete("/api/locations/:id", async (req, res) => {
   try {
