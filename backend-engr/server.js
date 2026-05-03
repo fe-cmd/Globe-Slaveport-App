@@ -48,20 +48,21 @@ const upload = multer({ storage });
 // ---------------- 🌍 GEO FUNCTION ----------------
 const getCoordinates = async (city, country) => {
   try {
-    const url = `https://nominatim.openstreetmap.org/search?format=json&q=${city},${country}`;
+    const key = process.env.OPENCAGE_KEY;
 
-    const res = await fetch(url, {
-      headers: {
-        "User-Agent": "autoglobeweb (oluferonmijoshua@gmail.com)"
-      }
-    });
+    const url = `https://api.opencagedata.com/geocode/v1/json?q=${encodeURIComponent(
+      city + "," + country
+    )}&key=${key}`;
 
+    const res = await fetch(url);
     const data = await res.json();
 
-    if (data.length > 0) {
+    console.log("🌍 OpenCage response:", data);
+
+    if (data.results.length > 0) {
       return {
-        lat: parseFloat(data[0].lat),
-        lng: parseFloat(data[0].lon),
+        lat: data.results[0].geometry.lat,
+        lng: data.results[0].geometry.lng,
       };
     }
   } catch (err) {
@@ -70,7 +71,6 @@ const getCoordinates = async (city, country) => {
 
   return { lat: 0, lng: 0 };
 };
-const sleep = (ms) => new Promise((res) => setTimeout(res, ms));
 
 // ---------------- DB CONNECTION ----------------
 const connectDB = async () => {
