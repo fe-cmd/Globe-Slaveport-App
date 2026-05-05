@@ -25,6 +25,15 @@ function Admindashboard() {
     image: null,
   });
 
+
+  const normalizeCountry = (name) => {
+  return name
+    .toLowerCase()
+    .split(" ")
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+};
+
   // ---------------- FETCH ----------------
   const fetchLocations = async () => {
     try {
@@ -61,9 +70,14 @@ function Admindashboard() {
   setLoading(true);
 
   const formData = new FormData();
-  Object.keys(form).forEach((key) => {
-    formData.append(key, form[key]);
-  });
+ const cleanedForm = {
+  ...form,
+  country: normalizeCountry(form.country.trim()),
+};
+
+Object.keys(cleanedForm).forEach((key) => {
+  formData.append(key, cleanedForm[key]);
+});
 
   const url = editId ? `${API}/${editId}` : API;
   const method = editId ? "PUT" : "POST";
