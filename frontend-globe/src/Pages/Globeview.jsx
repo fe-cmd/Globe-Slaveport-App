@@ -215,9 +215,9 @@ function MapController({ target }) {
     lastId.current = target._id;
     hasFiredRef.current = true;
 
-    map.flyTo([target.lat, target.lng], 6, {
-      duration: 1.5,
-    });
+    map.flyTo([target.lat, target.lng], 12, {
+  duration: 2,
+});
 
     // reset after movement completes
     const t = setTimeout(() => {
