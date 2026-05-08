@@ -530,6 +530,10 @@
    .mobile-hint-btn {
     left: 45%;
    }
+
+    .globe-area {
+    height: 70vh;
+  }
 }
 @media (max-width: 360px) {
    .back-home-btn {
@@ -539,5 +543,9 @@
    .mobile-hint-btn {
     left: 40%;
    }
+
+    .globe-area {
+    height: 70vh;
+  }
 }
 

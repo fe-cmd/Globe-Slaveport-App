@@ -216,7 +216,7 @@ function MapController({ target }) {
 
    const isMobileScreen = window.innerWidth <= 480;
 
-const latOffset = isMobileScreen ? -0.05 : 0;
+const latOffset = isMobileScreen ? -0.08 : 0;
 
 map.flyTo(
   [target.lat + latOffset, target.lng],
