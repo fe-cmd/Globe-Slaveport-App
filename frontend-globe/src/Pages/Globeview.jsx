@@ -209,15 +209,22 @@ function MapController({ target }) {
   useEffect(() => {
     if (!target?._id) return;
 
-    // 🚫 ignore duplicates
     if (lastId.current === target._id && hasFiredRef.current) return;
 
     lastId.current = target._id;
     hasFiredRef.current = true;
 
-    map.flyTo([target.lat, target.lng], 12, {
-  duration: 2,
-});
+   const isMobileScreen = window.innerWidth <= 480;
+
+const latOffset = isMobileScreen ? -0.05 : 0;
+
+map.flyTo(
+  [target.lat + latOffset, target.lng],
+  isMobileScreen ? 11 : 12,
+  {
+    duration: 2,
+  }
+);
 
     // reset after movement completes
     const t = setTimeout(() => {
