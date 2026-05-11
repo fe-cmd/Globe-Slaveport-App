@@ -160,21 +160,43 @@ const check = () => setIsMobile(window.matchMedia("(max-width: 480px)").matches)
   // ---------------- GROUP BY COUNTRY ----------------
  
   // ---------------- FILTER ----------------
-  const filteredCountries = groupedCountries.filter((c) =>
-    c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    c.region?.toLowerCase().includes(searchTerm.toLowerCase())
+
+  const searchWords = searchTerm
+  .toLowerCase()
+  .split(/[\s,&+]+/)
+  .filter(word =>
+    word &&
+    word !== "and" &&
+    word !== "or"
   );
+
+const filteredCountries = groupedCountries.filter((c) => {
+  // ✅ show all countries if search is empty
+  if (!searchWords.length) return true;
+
+  const text = `${c.name} ${c.region}`.toLowerCase();
+
+  return searchWords.some(word =>
+    text.includes(word)
+  );
+});
 
   const selectedCountryData = groupedCountries.find(
     (c) => c.name === selectedCountry
   );
 
-  const filteredItems = selectedCountryData?.items.filter((item) =>
-    Object.values(item)
-      .join(" ")
-      .toLowerCase()
-      .includes(searchTerm.toLowerCase())
+  const filteredItems = selectedCountryData?.items.filter((item) => {
+  // ✅ show all items if search empty
+  if (!searchWords.length) return true;
+
+  const text = Object.values(item)
+    .join(" ")
+    .toLowerCase();
+
+  return searchWords.some(word =>
+    text.includes(word)
   );
+});
 
   // ---------------- HANDLERS ----------------
   
@@ -238,6 +260,33 @@ map.flyTo(
 }
 
 const markersToDisplay = searchCountryMarkers || visibleMarkers;
+
+const getOffsetMarkers = (markers) => {
+  const grouped = {};
+
+  return markers.map((marker) => {
+    const key = `${marker.city}-${marker.country}`;
+
+    if (!grouped[key]) {
+      grouped[key] = 0;
+    }
+
+    const count = grouped[key];
+    grouped[key]++;
+
+    // 🔥 tiny spread offset
+    const offsetLat = marker.lat + count * 0.02;
+    const offsetLng = marker.lng + count * 0.02;
+
+    return {
+      ...marker,
+      displayLat: offsetLat,
+      displayLng: offsetLng,
+    };
+  });
+};
+
+const spacedMarkers = getOffsetMarkers(markersToDisplay);
 
   return (
     <div className="layout">
@@ -392,10 +441,10 @@ dragging={!isMobile}
     <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
 
 
-    {markersToDisplay.map((loc) => (
+    {spacedMarkers.map((loc) => (
      <Marker
   key={loc._id}
-  position={[loc.lat, loc.lng]}
+position={[loc.displayLat, loc.displayLng]}
   icon={createImageIcon(loc.picture)}
   eventHandlers={{
   click: () => {

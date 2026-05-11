@@ -12,6 +12,18 @@
   justify-content: center;
 }
 
+.suggestions-box {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: white;
+  z-index: 9999;
+  border: 1px solid #ddd;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
 /* ---------------- DARK OVERLAY ---------------- */
 .admin-overlay {
   position: absolute;

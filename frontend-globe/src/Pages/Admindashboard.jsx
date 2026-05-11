@@ -10,10 +10,19 @@ const API = `${process.env.REACT_APP_API}/api/locations`;
 function Admindashboard() {
   const navigate = useNavigate();
 
+  console.log("LOCATIONIQ KEY:", process.env.REACT_APP_LOCATIONIQ_KEY);
+
+
   const [locations, setLocations] = useState([]);
   const [open, setOpen] = useState(false);
   const [editId, setEditId] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [lockSuggestions, setLockSuggestions] = useState(false);
+  const [loadingCities, setLoadingCities] = useState(false);
+  const [suggestions, setSuggestions] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+
+  void lockSuggestions
 
   const [form, setForm] = useState({
     item: "",
@@ -24,6 +33,42 @@ function Admindashboard() {
     comments: "",
     image: null,
   });
+
+ const fetchCitySuggestions = async (query) => {
+  if (!query || query.length < 2) return [];
+
+  try {
+    const url = `https://us1.locationiq.com/v1/search.php?key=${process.env.REACT_APP_LOCATIONIQ_KEY}&q=${encodeURIComponent(
+  query
+)}&format=json&addressdetails=1`;
+
+    const res = await fetch(url);
+    const data = await res.json();
+
+    console.log("LOCATIONIQ RESPONSE:", data); // 🔥 DEBUG
+
+    if (!Array.isArray(data)) {
+      console.error("API ERROR:", data);
+      return [];
+    }
+
+    return data.map((item) => ({
+  city: item.address?.city || item.display_name.split(",")[0],
+  full: item.display_name,
+  country: item.address?.country || "",
+  area: item.address?.state || item.address?.region || "",
+  lat: item.lat,
+  lng: item.lon
+}));
+  } catch (err) {
+    console.error("Fetch failed:", err);
+    return [];
+  }
+};
+const [autoFilled, setAutoFilled] = useState({
+  country: false,
+  area: false,
+});
 
 
   const normalizeCountry = (name) => {
@@ -158,6 +203,27 @@ Object.keys(cleanedForm).forEach((key) => {
     setOpen(true);
   };
 
+ useEffect(() => {
+  const delay = setTimeout(async () => {
+     // 🔒 STOP AUTOCOMPLETE AFTER USER SELECTS
+    if (!form.city || form.city.length < 2) {
+      setSuggestions([]);
+      setShowSuggestions(false);
+      return;
+    }
+
+    setLoadingCities(true);
+
+    const results = await fetchCitySuggestions(form.city);
+
+    setSuggestions(results);
+    setShowSuggestions(true);
+
+    setLoadingCities(false);
+  }, 400);
+
+  return () => clearTimeout(delay);
+}, [form.city]);
   return (
     <div
       className="admin-page"
@@ -252,28 +318,89 @@ Object.keys(cleanedForm).forEach((key) => {
                   value={form.item}
                   onChange={handleChange}
                 />
+<div style={{ position: "relative" }}>
+             <input
+  name="city"
+  placeholder="City"
+  value={form.city}
+  onChange={(e) => {
+    setForm((prev) => ({
+      ...prev,
+      city: e.target.value
+    }));
+  }}
+/>
+{loadingCities && (
+  <small style={{ color: "gray" }}>Searching cities...</small>
+)}
+{showSuggestions && suggestions.length > 0 && (
+  <div className="suggestions-box">
+    {suggestions.map((item, index) => (
+      <div
+        key={index}
+        className="suggestion-item"
+        onClick={() => {
+            setLockSuggestions(false); // re-enable autocomplete
 
-                <input
-                  name="city"
-                  placeholder="City"
-                  value={form.city}
-                  onChange={handleChange}
-                />
+          setForm((prev) => ({
+            ...prev,
+            city: item.city,
 
-                <input
-                  name="country"
-                  placeholder="Country"
-                  value={form.country}
-                  onChange={handleChange}
-                />
+            country: item.country || "",
+            lat: item.lat,
+            lng: item.lng
+          }));
 
-                <input
-                  name="area"
-                  placeholder="Area"
-                  value={form.area}
-                  onChange={handleChange}
-                />
+          // 🔒 lock autocomplete after selection
+  setSuggestions([]);
+  setShowSuggestions(false);
 
+
+          setAutoFilled({
+            country: true,
+            area: true
+          });
+
+          setSuggestions([]);
+          setShowSuggestions(false);
+        }}
+      >
+        <strong>{item.city}</strong>
+        <small>{item.country}</small>
+      </div>
+    ))}
+  </div>
+)}
+</div>
+<input
+  name="country"
+  placeholder="Country"
+  value={form.country}
+  onChange={(e) => {
+        setLockSuggestions(false); // 🔥 unlock again when user types
+
+    setAutoFilled((prev) => ({ ...prev, country: false }));
+
+    setForm((prev) => ({
+      ...prev,
+      country: e.target.value
+    }));
+  }}
+  style={{
+    border: autoFilled.country ? "2px solid #4caf50" : ""
+  }}
+/>
+              <input
+  name="area"
+  placeholder="Region / Continent"
+  value={form.area}
+  onChange={(e) => {
+    setForm((prev) => ({
+      ...prev,
+      area: e.target.value
+    }));
+  }}
+/>
                 <input
                   name="year"
                   placeholder="Year"
